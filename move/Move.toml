@@ -1,0 +1,12 @@
+[package]
+name = "DatasetMarketplace"
+version = "1.0.0"
+authors = []
+
+[addresses]
+marketplace = "0xce6d9b08677578e07199626a0bc4e3f94cafa740f896706c337811bc0ffb27f6"
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "devnet"
+subdir = "aptos-move/framework/aptos-framework"
