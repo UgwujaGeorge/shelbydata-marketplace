@@ -6,6 +6,7 @@ import { useUploadBlobs } from "@shelby-protocol/react";
 import { ShelbyClient } from "@shelby-protocol/sdk/browser";
 import { Network } from "@aptos-labs/ts-sdk";
 import { aptos, MARKETPLACE_ADDRESS, MODULE_NAME, aptToOcta } from "@/lib/aptos";
+import { generateBlobName, getExpirationMicros } from "@/lib/shelby";
 
 export type UploadState =
   | "idle"
@@ -15,13 +16,18 @@ export type UploadState =
   | "done"
   | "error";
 
-function generateBlobName(fileName: string, address: string): string {
-  const clean = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-  return `dataset_${address.slice(2, 8)}_${Date.now()}_${clean}`;
-}
-
-function getExpirationMicros(): number {
-  return Date.now() * 1000 + 90 * 86400 * 1_000_000;
+function humanizeUploadError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (msg.includes("module_not_found") || msg.includes("Module not found")) {
+    return "The marketplace contract is not deployed on Aptos Devnet yet. Please deploy the Move module first.";
+  }
+  if (msg.includes("INSUFFICIENT_BALANCE") || msg.includes("insufficient balance")) {
+    return "Insufficient APT balance to cover gas fees.";
+  }
+  if (msg.includes("User rejected") || msg.includes("user rejected")) {
+    return "Transaction rejected. Please approve the transaction in your wallet.";
+  }
+  return msg.slice(0, 200);
 }
 
 export function useAptosUpload() {
@@ -74,7 +80,6 @@ export function useAptosUpload() {
       // Step 2: List on-chain via Move entry function
       setState("waiting-wallet");
 
-      // Derive the Shelby storage account address (same as Aptos account since we use native Aptos wallet)
       const shelbyAccount = account.address.toString();
       const priceOcta = params.priceApt ? aptToOcta(parseFloat(params.priceApt)) : BigInt(0);
 
@@ -101,8 +106,7 @@ export function useAptosUpload() {
       await aptos.waitForTransaction({ transactionHash: response.hash });
       setState("done");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      setError(msg.slice(0, 200));
+      setError(humanizeUploadError(err));
       setState("error");
     }
   }

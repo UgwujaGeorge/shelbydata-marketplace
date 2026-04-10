@@ -7,7 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCreatorDatasets } from "@/hooks/useAptosDatasets";
 import { formatFileSize, formatApt } from "@/lib/aptos";
-import { Upload, ExternalLink, HardDrive, Download, Tag, LayoutGrid, TrendingUp, Coins, Wallet, ArrowUpRight } from "lucide-react";
+import { Upload, HardDrive, Download, Tag, LayoutGrid, TrendingUp, Coins, Wallet, ArrowUpRight, AlertCircle } from "lucide-react";
 
 const CATEGORY_DOT: Record<string, string> = {
   "NLP / Text":             "bg-sky-400",
@@ -23,7 +23,7 @@ const CATEGORY_DOT: Record<string, string> = {
 export default function MyDatasetsPage() {
   const { connected, account } = useWallet();
   const address = account?.address?.toString() ?? null;
-  const { datasets, isLoading } = useCreatorDatasets(address);
+  const { datasets, isLoading, error } = useCreatorDatasets(address);
 
   const totalDownloads = useMemo(() => datasets.reduce((s, d) => s + d.downloadCount, 0), [datasets]);
   const totalEarnings = useMemo(() => datasets.reduce((s, d) => s + Number(d.price) * d.downloadCount, 0), [datasets]);
@@ -81,6 +81,13 @@ export default function MyDatasetsPage() {
               <p className="text-xs text-[oklch(0.42_0.02_225)] mt-1">{label}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {error && (
+        <div className="flex items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/5 px-4 py-3">
+          <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+          <p className="text-sm text-red-300">{error}</p>
         </div>
       )}
 

@@ -11,7 +11,7 @@ import { aptos, MARKETPLACE_ADDRESS, MODULE_NAME, formatApt, formatFileSize } fr
 import {
   Download, HardDrive, Clock, User, Tag, CheckCircle2,
   Loader2, ArrowLeft, Lock, Unlock, Copy,
-  Terminal, Code2, ExternalLink, ShieldCheck,
+  Terminal, Code2, ExternalLink, ShieldCheck, AlertCircle,
 } from "lucide-react";
 
 function timeAgo(sec: number): string {
@@ -46,7 +46,7 @@ export default function DatasetPage({ params }: { params: Promise<{ id: string }
   const { connected, account, signAndSubmitTransaction } = useWallet();
   const address = account?.address?.toString() ?? null;
 
-  const { dataset, isLoading } = useDataset(datasetId);
+  const { dataset, isLoading, error: datasetError } = useDataset(datasetId);
   const { hasAccess, refetch: refetchAccess } = useHasAccess(datasetId, address);
   const blobData = useDatasetBlob(datasetId, hasAccess ? address : null);
 
@@ -86,10 +86,19 @@ export default function DatasetPage({ params }: { params: Promise<{ id: string }
     );
   }
 
-  if (!dataset) {
+  if (datasetError || !dataset) {
     return (
       <div className="flex flex-col items-center py-32 text-center gap-5">
-        <p className="text-xl font-bold text-white">Dataset not found</p>
+        {datasetError ? (
+          <>
+            <div className="flex items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 max-w-md text-left">
+              <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
+              <p className="text-sm text-red-300">{datasetError}</p>
+            </div>
+          </>
+        ) : (
+          <p className="text-xl font-bold text-white">Dataset not found</p>
+        )}
         <Link href="/" className={buttonVariants({ variant: "outline", className: "border-white/8 bg-white/4 rounded-2xl" })}>
           <ArrowLeft className="mr-2 h-4 w-4" />Back to Marketplace
         </Link>

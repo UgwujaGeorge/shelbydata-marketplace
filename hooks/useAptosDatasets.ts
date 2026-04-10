@@ -6,9 +6,19 @@ import {
   MARKETPLACE_ADDRESS,
   MODULE_NAME,
   DatasetPublic,
-  DatasetFull,
   parseDatasetPublic,
 } from "@/lib/aptos";
+
+function humanizeAptosError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (msg.includes("module_not_found") || msg.includes("Module not found")) {
+    return (
+      "The marketplace contract is not deployed on Aptos Devnet yet. " +
+      "Please deploy the Move module first, or check back later."
+    );
+  }
+  return "Failed to load data. Please try again.";
+}
 
 export function useDatasetCount() {
   const [count, setCount] = useState<number>(0);
@@ -66,7 +76,7 @@ export function useDatasets() {
       const results = await Promise.all(fetches);
       setDatasets(results.map((r) => parseDatasetPublic(r)).filter((d) => d.active));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load datasets");
+      setError(humanizeAptosError(e));
     } finally {
       setIsLoading(false);
     }
@@ -79,8 +89,11 @@ export function useDatasets() {
 export function useDataset(id: number) {
   const [dataset, setDataset] = useState<DatasetPublic | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setIsLoading(true);
+    setError(null);
     aptos.view({
       payload: {
         function: `${MARKETPLACE_ADDRESS}::${MODULE_NAME}::get_dataset_public`,
@@ -88,11 +101,20 @@ export function useDataset(id: number) {
         functionArguments: [MARKETPLACE_ADDRESS, id.toString()],
       },
     }).then((r) => setDataset(parseDatasetPublic(r)))
-      .catch(() => setDataset(null))
+      .catch((e) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes("module_not_found") || msg.includes("Module not found")) {
+          setError(
+            "The marketplace contract is not deployed on Aptos Devnet yet."
+          );
+        } else {
+          setError("Dataset could not be loaded.");
+        }
+      })
       .finally(() => setIsLoading(false));
   }, [id]);
 
-  return { dataset, isLoading };
+  return { dataset, isLoading, error };
 }
 
 export function useDatasetBlob(id: number, caller: string | null) {
@@ -143,10 +165,12 @@ export function useHasAccess(id: number, user: string | null) {
 export function useCreatorDatasets(creator: string | null) {
   const [datasets, setDatasets] = useState<DatasetPublic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!creator) { setIsLoading(false); return; }
 
+    setError(null);
     aptos.view({
       payload: {
         function: `${MARKETPLACE_ADDRESS}::${MODULE_NAME}::get_dataset_count`,
@@ -169,9 +193,11 @@ export function useCreatorDatasets(creator: string | null) {
         .map((r) => parseDatasetPublic(r))
         .filter((d) => d.creator.toLowerCase() === creator.toLowerCase());
       setDatasets(mine);
-    }).catch(() => setDatasets([]))
-      .finally(() => setIsLoading(false));
+    }).catch((e) => {
+      setError(humanizeAptosError(e));
+      setDatasets([]);
+    }).finally(() => setIsLoading(false));
   }, [creator]);
 
-  return { datasets, isLoading };
+  return { datasets, isLoading, error };
 }
